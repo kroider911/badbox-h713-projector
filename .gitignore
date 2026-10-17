@@ -1,3 +1,10 @@
+# Malware samples and extracted Android payloads must not be re-added accidentally.
+*.apk
+*.jar
+*.dex
+*.rf
+*.img
+*.zip
 backup/mmcblk0.img
 abuse-reports/
 downloads/L3.zip
