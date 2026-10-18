@@ -17,11 +17,7 @@ com.android.netservice
                       └─ Android UID 1000
 ~~~
 
-The extracted com.android.domain APK was identified by ESET as:
-
-~~~text
-Android/TrojanDownloader.Agent.BOA
-~~~
+The [code-level analysis](code-analysis.md) follows the retained APK through startup, scheduling, DNS selection, request headers, response decryption, download validation and installer submission.
 
 The following are confirmed on this unit:
 
@@ -85,7 +81,7 @@ The investigation also included:
 - SQLite inspection of sofa-db
 - static inspection of init scripts
 - extraction and hashing of the domain APK
-- ESET scanning of the extracted file
+- independent scanning of the extracted file
 - comparison against the public H713/AT-M269 case
 
 No uncontrolled execution or dynamic instrumentation of the extracted APK was performed.
@@ -212,7 +208,7 @@ The task record and the extracted APK agree on:
 
 This establishes a local, device-specific relationship between netservice and the domain APK. It is stronger than a package-name match, but it does not prove that the remote download was observed live during collection.
 
-## 7. APK evidence and ESET result
+## 7. APK evidence
 
 Extracted APK:
 
@@ -222,20 +218,13 @@ MD5:       72AC40CE7DF55D586F21C6D89CCE6B7B
 SHA-256:   5B029ABE4AD2CD6DFA18064899B50190E00CE0F50BAC57CBD849502AB3108F30
 ~~~
 
-ESET result:
+ESET identified the extracted DEX as the threat `Android/TrojanDownloader.Agent.BOA`.
 
-~~~text
-Android/TrojanDownloader.Agent.BOA
-Action: file deleted
-~~~
+The APK was retained locally for targeted Java decompilation and instruction-level cross-checks; binaries are not published here.
 
-The ESET event concerns the APK/DEX extracted from the projector. It must not be confused with the separate plugin.jar sample in the public repository, which ESET identified as Android/TrojanDownloader.Keenadu.A.
+## 8. Static bytecode findings
 
-The extracted DEX copy that ESET quarantined was not restored or redistributed. The APK used for hashing and static inspection was retained locally and is not published here.
-
-## 8.1. Static bytecode findings
-
-The retained APK was inspected with Android SDK `dexdump` after extraction of `classes.dex`. This is instruction-level evidence from the sample, not a behavioral claim about code paths that were not executed.
+The retained APK was inspected with Android SDK `dexdump` and targeted JADX 1.5.6 single-class decompilation. The detailed [code-level report](code-analysis.md) gives method offsets, pseudocode, protocol framing, branch conditions and validation limitations. No extracted application code was executed.
 
 ### Network client and fallback domains
 
@@ -250,7 +239,7 @@ com.android.systemss.presenter.AppnetPresenter
 default domain: d.rdnss.cloud
 API path:       /app-api/hnc2fng/gnbht53hdv2/dhgb35dg
 API path:       /app-api/hnc2fng/ghbn1hebdsh/yh65hbfvg3jfdbs
-local base:     http://<selected-domain>:9901
+request base:   http://<resolved-address>:9901
 HTTP client:    Retrofit + OkHttp
 connect timeout: 30000 ms
 ~~~
@@ -279,7 +268,7 @@ The DEX also contains log strings for a new download task, download progress, co
 
 ### Device fingerprinting and command execution
 
-The APK includes utility code that reads `/proc/cpuinfo` using `/system/bin/cat` and parses the `Serial` field. The DEX also contains `Runtime.exec` and `ProcessBuilder` references. These findings show collection/execution capability in the sample; they do not prove that every command or identifier was transmitted.
+The update client's Allwinner branch reads `/sys/class/sunxi_info/sys_info` for a chip/serial identifier and `eth0` for its MAC header. The separate `/proc/cpuinfo` parser is selected by the Rockchip branch. Command-execution references support these fixed local identifier reads; an arbitrary remote shell dispatcher was not demonstrated.
 
 ### Exported components
 
@@ -291,7 +280,7 @@ com.android.systemss.StartupBroadcast
 com.android.provider.DomainProvider
 ~~~
 
-`StartupBroadcast` handles `BOOT_COMPLETED` and package add/remove broadcasts. `DomainProvider` exposes a URI matcher for `domains` and `domains/#`. The absence of an observed caller restriction on these exported components is a material attack-surface concern and should be confirmed against the complete manifest on any replacement sample.
+`StartupBroadcast.onReceive()` processes only `BOOT_COMPLETED`; package add/remove actions are declared but ignored by this method. `DomainProvider` exposes CRUD operations for `domains` and `domains/#`. The inspected manifest declares no application/provider caller permission, and the reviewed CRUD methods contain no caller check. Cross-UID modification was not tested. See the code report for the provider's effect on future server selection.
 
 ## 9. Configuration and network indicators
 
@@ -376,7 +365,6 @@ This is a point-in-time negative observation. It cannot exclude:
 | Encrypted .rf modules | Present | Not found |
 | com.android.netservice | Not established | Present |
 | com.android.domain | Not established | Present |
-| ESET detection on domain | Not applicable | Confirmed |
 | Active proxy traffic | Sample evidence | Not observed |
 
 The defensible conclusion is related platform lineage with a distinct firmware and package set. The evidence does not support describing the two devices as byte-identical.
@@ -390,7 +378,7 @@ The defensible conclusion is related platform lineage with a distinct firmware a
 | 30 Aug 2026 12:37:44 | domain first installed | Package metadata |
 | 18 Sep 2026 21:03:45 | netservice data component updated | Package metadata |
 | 17 Oct 2026 around 23:57 | domain configuration recorded d.rdnss.cloud | Redacted config.xml |
-| 18 Oct 2026 | APK extracted and scanned by ESET | ESET event |
+| 18 Oct 2026 | APK extracted, hashed and statically analysed | Local sample and code outputs |
 
 The timeline documents local device state. It does not establish the first time a remote operator used the service.
 
@@ -403,9 +391,8 @@ The timeline documents local device state. It does not establish the first time 
 | netservice is an install/update component | High | Permissions, package metadata and database |
 | domain was installed by netservice | High | Installer field, task record and install time |
 | APK identity | High | Matching size, MD5 and SHA-256 |
-| ESET classification | High | Local ESET event |
 | Boot-script behavior | High | Read-only script/init inspection |
-| domain bytecode behavior | Limited | APK removed after detection |
+| domain update control flow | High for reviewed methods | Targeted Java decompilation and DEX instructions; runtime delivery unverified |
 | Active proxy operation | Not established | No matching modules or traffic snapshot |
 | Byte identity with AT-M269 sample | Low | Different build and inventory |
 | Manufacturer/retailer attribution | Not established | No attribution evidence |
@@ -467,7 +454,7 @@ Redact ADB serial, MAC addresses, CPU IDs, Android ID, Wi-Fi SSID/BSSID, JWT-lik
 
 ## 17. Limitations
 
-- ESET removed an extracted DEX copy after detection; the retained APK was statically inspected with `dexdump`, but no dynamic execution or instrumentation was performed.
+- The retained APK was inspected with targeted JADX decompilation and `dexdump`; no dynamic execution or instrumentation was performed.
 - The report uses package metadata, database records, configuration and system artifacts rather than a complete firmware image.
 - No continuous packet capture was performed.
 - No claim is made that Senz is the developer, operator or distributor of the observed software.
@@ -482,7 +469,7 @@ For the user:
 
 1. Keep the device off the internet until the firmware is resolved.
 2. Do not place it on a network containing NAS, workstations or sensitive accounts.
-3. Preserve ESET screenshots, hashes and redacted logs.
+3. Preserve hashes, code evidence, detection records and redacted logs.
 4. Request a complete firmware hash and written explanation from the seller.
 5. Prefer return/reklamasjon or a verified clean firmware image.
 
@@ -493,12 +480,12 @@ For the seller/manufacturer:
 3. Explain why com.android.domain runs as system UID.
 4. Explain the silent APK task for taskId 601.
 5. Identify business.dnsyc.top, heartbeat.dnsyc.top and d.rdnss.cloud.
-6. Provide firmware without the ESET-detected component.
+6. Provide firmware with the identified component removed or independently remediated.
 7. Disable unauthenticated ADB and enforce SELinux in the shipping build.
 8. Provide a signed change log for privileged system packages.
 
 ## 19. Final assessment
 
-The examined Senz/SPR2226 projector is a high-risk Android firmware variant with a system-privileged updater/install chain and an ESET-detected domain service. The evidence is strong enough to justify quarantine, vendor escalation and a firmware replacement or return request.
+The examined Senz/SPR2226 projector has a system-privileged updater/install chain. The reviewed code accepts encrypted remote application lists, replaces server candidates, stages downloads using size checks, and submits installer sessions without verifying the final result before reporting success. These code findings warrant vendor escalation and remediation; they do not establish proxy traffic or controller identity.
 
 The evidence is not strong enough to state that this exact device was an active residential proxy, that all Senz projectors are infected, or that a named manufacturer or retailer operated the observed infrastructure.

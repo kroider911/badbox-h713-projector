@@ -842,7 +842,7 @@ Read-only reachability check from an independent host (no proxy protocol/payload
 
 **18 Oct 2026 · device-specific case · @R**
 
-A Senz-branded projector identified as `SPR2226` was examined over USB ADB. It is an Allwinner H713/H713M Android 11 variant with an unsafe development configuration and a system-UID update chain. The unit contains a concrete task for downloading `com.android.domain`; the extracted APK was detected by ESET as `Android/TrojanDownloader.Agent.BOA`.
+A Senz-branded projector identified as `SPR2226` was examined over USB ADB. It is an Allwinner H713/H713M Android 11 variant with an unsafe development configuration and a system-UID update chain. The unit contains a concrete task for downloading `com.android.domain`. Targeted Java decompilation now traces its request protocol, encrypted responses, domain replacement, download checks and installer submission in the [code-level analysis](analysis/cases/SPR2226-2026/code-analysis.md).
 
 This is a related but distinct sample. The AT-M269 case above contains the `.rf` proxy modules and `yiyou` loader. Those packages and modules were **not found** in the captured SPR2226 inventory. Proxy operation, common authorship, retailer/manufacturer attribution and infection of other units are not established by this case.
 
@@ -936,15 +936,9 @@ MD5:     72AC40CE7DF55D586F21C6D89CCE6B7B
 SHA-256: 5B029ABE4AD2CD6DFA18064899B50190E00CE0F50BAC57CBD849502AB3108F30
 ```
 
-#### **d) ESET detection**
+#### **d) Independent file detection**
 
-ESET detected the extracted DEX from this APK as:
-
-```
-Android/TrojanDownloader.Agent.BOA
-```
-
-ESET removed the extracted copy. The APK and DEX are not included in this repository. The detection is evidence about the file; it is not, by itself, attribution or proof of proxy operation.
+The independent file-detection result is recorded once in the [case report](analysis/cases/SPR2226-2026/reverse-engineering.md#7-apk-evidence).
 
 #### **e) Privileged service surface**
 
@@ -967,7 +961,7 @@ com.android.systemss.presenter.AppnetPresenter
 
 The sample contains the default domain `d.rdnss.cloud`, two API paths, Retrofit/OkHttp construction and an HTTP base URL on port `9901`. `DomainPool` reads configured/test domains and queries the exported domain provider for domain candidates. The bytecode also contains a concrete download/install path using `PackageInstaller.SessionParams`, `createSession`, `openWrite`, `fsync` and `commit`, plus log strings for download progress and successful APK installation. This is direct static evidence of APK update capability; it is not proof that every possible task was executed during the capture.
 
-The same DEX contains code that reads `/proc/cpuinfo` through `/system/bin/cat`, parses the `Serial` field, and references `Runtime.exec`/`ProcessBuilder`. `StartupBroadcast` handles `BOOT_COMPLETED` and package add/remove events. These findings strengthen the downloader-chain assessment, but do not establish proxy operation or operator attribution.
+The Allwinner request path reads identifiers from `/sys/class/sunxi_info/sys_info` and the `eth0` hardware address. The separate `/proc/cpuinfo` routine belongs to the Rockchip branch. `StartupBroadcast` processes `BOOT_COMPLETED`; package add/remove actions are declared in the manifest but ignored by its examined method body. The [code-level analysis](analysis/cases/SPR2226-2026/code-analysis.md) follows the eight-hour request gate, AES-CBC response parsing, server-provided APK tasks, exported domain-provider writes, and premature install-success logging.
 
 The full redacted technical appendix is in [`analysis/cases/SPR2226-2026/reverse-engineering.md`](analysis/cases/SPR2226-2026/reverse-engineering.md); the reproducible evidence appendix is in [`analysis/cases/SPR2226-2026/evidence.md`](analysis/cases/SPR2226-2026/evidence.md).
 
@@ -976,7 +970,7 @@ The full redacted technical appendix is in [`analysis/cases/SPR2226-2026/reverse
 | Component | Location / identity | Observed role |
 | --- | --- | --- |
 | `com.android.netservice` | `/system/app/netserevice-release`, system component | Maintains config and download/install tasks |
-| `com.android.domain` | `/data/app`, version 1.0.6 | System-UID service named by task 601; ESET-detected APK |
+| `com.android.domain` | `/data/app`, version 1.0.6 | System-UID remote APK update client named by task 601 |
 | `InstallXAPK` | `/system/app/InstallXAPK/InstallXAPK.apk` | Privileged APK installation component |
 | `appsdisable` / `gmsopt` | `/system/bin` | Boot-time Google receiver control scripts |
 | `qw` | `/system/bin/qw` | Root service; purpose not fully determined in this case |
@@ -1005,7 +999,7 @@ A network snapshot showed ADB listening on `5555`, but no active connection owne
 | `com.google.adtest` | present | not found |
 | `.rf` proxy modules | present | not found |
 | `com.android.netservice` | not established | present |
-| `com.android.domain` | not established | present; ESET detection |
+| `com.android.domain` | not established | present; code-level update chain traced |
 | Proxy traffic | observed in sample | not observed in snapshot |
 
 The defensible conclusion is a related H713 platform with a distinct, system-privileged downloader/service chain. This case does not establish that the SPR2226 unit ran the four proxy modules described above.

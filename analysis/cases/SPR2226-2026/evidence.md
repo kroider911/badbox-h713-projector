@@ -13,7 +13,7 @@ This appendix records the reproducible, redacted evidence behind the SPR2226 cas
 | Root check | `adb shell su 0 id` returned UID 0 |
 | Display | 1280x720 |
 
-The unit was isolated for package and filesystem inspection. Network observations are a point-in-time snapshot and are not a substitute for a packet capture.
+Collection used USB ADB. Complete network isolation was not established in this appendix. Network observations are a point-in-time snapshot and are not a substitute for a packet capture.
 
 ## Build properties
 
@@ -111,7 +111,7 @@ TASK_INFO_BEAN
   download host: 40.160.68.219:38513
 ```
 
-The task URL contained the same MD5 and filename shown above. The complete URL is retained in local evidence because the task path includes a device/package-specific identifier.
+The task URL contained the same MD5 and filename shown above. Its full value appears in the root README; the path encodes a date, digest and filename rather than a demonstrated unique hardware identifier.
 
 This is the strongest chain on the examined unit:
 
@@ -122,7 +122,7 @@ com.android.netservice
   -> installed com.android.domain
 ```
 
-## APK and ESET evidence
+## APK evidence
 
 The APK pulled from the unit had:
 
@@ -132,13 +132,7 @@ MD5:     72AC40CE7DF55D586F21C6D89CCE6B7B
 SHA-256: 5B029ABE4AD2CD6DFA18064899B50190E00CE0F50BAC57CBD849502AB3108F30
 ```
 
-ESET reported:
-
-```text
-Android/TrojanDownloader.Agent.BOA
-```
-
-ESET removed the extracted copy. The detection was made on the extracted APK/DEX, not by scanning the projector directly. The event screenshots and original hash record are retained locally.
+The independent file-detection result is recorded once in the [case report](reverse-engineering.md#7-apk-evidence). The retained APK supports the [code-level analysis](code-analysis.md); local detection records remain separate evidence.
 
 ## System files
 
@@ -238,7 +232,7 @@ For database collection, use a forensic copy and publish only selected rows afte
 
 ## Evidence limitations
 
-- ESET detection identifies the extracted file; it does not identify the manufacturer, seller or hosting provider.
+- A file-detection result does not identify the manufacturer, seller or hosting provider.
 - Hosting registration for an IP address is not attribution to the registrant.
 - A package's permissions show capability, not proof that every capability was exercised.
 - The process snapshot did not show proxy traffic.
