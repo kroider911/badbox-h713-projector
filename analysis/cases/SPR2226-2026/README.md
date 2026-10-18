@@ -2,6 +2,25 @@
 
 > Device-specific case for the H713 projector family. This is a related but distinct firmware sample from the AT-M269 case in the main README.
 
+## Executive conclusion
+
+The examined `SPR2226` is not proven to be byte-identical to the AT-M269 firmware analysed in the main case. It is nevertheless a high-risk related platform: ADB is unauthorised, root is available, SELinux is permissive, and a system-UID update service had a concrete task to retrieve and install `com.android.domain`.
+
+The extracted `com.android.domain` file was detected by ESET as `Android/TrojanDownloader.Agent.BOA`. This is strong evidence that the package is malicious or unwanted, but it is not by itself proof that the device operated as a residential proxy. The known `.rf` proxy modules and the main-case package names were not found in the captured inventory.
+
+### Evidence grading
+
+| Claim | Evidence level | Basis |
+| --- | --- | --- |
+| The unit is an H713/H713M Android 11 device | Confirmed | ADB properties and USB identity |
+| ADB/root/SELinux posture is unsafe | Confirmed | `ro.adb.secure=0`, `su 0`, permissive SELinux |
+| `netservice` had an install task for `domain` | Confirmed | `sofa-db` task and package metadata match |
+| `domain` was installed by `netservice` | Confirmed | Package installer and install time |
+| Extracted `domain` triggered ESET detection | Confirmed | ESET event and matching APK hash |
+| The unit ran the repository's four proxy modules | Not established | Modules/packages absent from snapshot |
+| The unit acted as a residential proxy | Not established | No corresponding process traffic observed |
+| Manufacturer or retailer operated the infrastructure | Not established | Hosting ownership is not attribution |
+
 ## Summary
 
 A projector identified as `SPR2226` was examined over USB ADB. It is an Allwinner H713/H713M Android 11 device with an unusually permissive development configuration. The unit contains a system-level update component, `com.android.netservice`, with a concrete database task for `com.android.domain`.
@@ -29,6 +48,39 @@ Collected with read-only ADB property queries:
 | Verified boot | `green`; vbmeta device state `locked` |
 
 `su 0 id` returned UID 0 on the examined unit.
+
+## Observed timeline
+
+| Time | Event | Evidence |
+| --- | --- | --- |
+| 16 Apr 2026 | Firmware build date | Android build properties |
+| 30 Aug 2026 12:37:44 | `com.android.domain` first installed | Package manager metadata |
+| 17 Oct 2026 around 23:57 | `domain` configuration recorded `d.rdnss.cloud` | Redacted `config.xml` |
+| 18 Oct 2026 | APK/DEX extracted and submitted to ESET | ESET event log and screenshot |
+
+The installation date and configuration timestamps are device-local observations. They do not prove when the remote service was first operated by its controller.
+
+## Component map
+
+```text
+system image
+├─ com.android.netservice
+│  ├─ system package: netservice-3.4.9-allwinner
+│  ├─ data update: version 3.6.0
+│  └─ sofa-db: install task for com.android.domain 1.0.6
+│
+├─ appsdisable / gmsopt
+│  └─ boot-triggered root scripts affecting Google boot receivers
+│
+└─ InstallXAPK / systemmix / qw
+   └─ additional privileged installation, root and system-control surface
+
+data package
+└─ com.android.domain 1.0.6
+   └─ com.android.systemss.SystemService (system UID)
+```
+
+The map describes observed package relationships, not an assertion that every component has the same author or purpose.
 
 ## `com.android.netservice`
 
