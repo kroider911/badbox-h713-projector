@@ -4,6 +4,8 @@ Start with the [joined component-chain analysis](chain-analysis.md), then the co
 
 > Device-specific case for the H713 projector family. This is a related but distinct firmware sample from the AT-M269 case in the main README.
 
+Additional evidence: [ESET detection and provenance](eset-evidence.md) and [naturally captured update metadata](captured-domain-response.md). The latter has indirect process attribution and does not demonstrate a new installation.
+
 ## Executive conclusion
 
 The examined `SPR2226` is not proven to be byte-identical to the AT-M269 firmware analysed in the main case. It is nevertheless a high-risk related platform: ADB is unauthorised, root is available, SELinux is permissive, and a system-UID update service had a concrete task to retrieve and install `com.android.domain`.

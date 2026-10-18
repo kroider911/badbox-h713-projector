@@ -220,7 +220,7 @@ MD5:       72AC40CE7DF55D586F21C6D89CCE6B7B
 SHA-256:   5B029ABE4AD2CD6DFA18064899B50190E00CE0F50BAC57CBD849502AB3108F30
 ~~~
 
-ESET identified the extracted DEX as the threat `Android/TrojanDownloader.Agent.BOA`.
+The supplied redacted ESET documentation reports detection of the extracted DEX as a variant of `Android/TrojanDownloader.Agent.BOA`. Its transcribed object hash matches the DEX hash recorded in the code analysis. Original screenshots, raw logs and sample bytes were not independently examined in this repository review. See [ESET evidence and provenance](eset-evidence.md) for the detection fields, limits, and the separate Keenadu reference samples.
 
 The APK was retained locally for targeted Java decompilation and instruction-level cross-checks; binaries are not published here.
 

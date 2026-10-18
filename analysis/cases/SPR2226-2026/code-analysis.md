@@ -2,7 +2,7 @@
 
 ## Sample and method
 
-APK SHA-256: `5b029abe4ad2cd6dfa18064899b50190e00ce0f50bac57cbd849502ab3108f30` (3,959,797 bytes). Package `com.android.domain`, versionCode 106. Analysis uses this retained APK, Android SDK 35.0.0 `aapt`/`dexdump`, and JADX 1.5.6 with targeted single-class decompilation. No extracted application code was executed. No production endpoint was queried to obtain tasks.
+APK SHA-256: `5b029abe4ad2cd6dfa18064899b50190e00ce0f50bac57cbd849502ab3108f30` (3,959,797 bytes). Package `com.android.domain`, versionCode 106. Analysis uses this retained APK, Android SDK 35.0.0 `aapt`/`dexdump`, and JADX 1.5.6 with targeted single-class decompilation. No extracted application code was executed. This static-analysis phase did not query production endpoints. A later passive capture is documented separately in [captured-domain-response.md](captured-domain-response.md); process attribution there is indirect, not PID/socket-verified.
 
 The APK's `classes.dex` is 6,750,996 bytes, SHA-256 `8f013074186630aa31d6146bd9431bb6a0568c25438103731c81106176715d1a`. This was rehashed directly from the ZIP entry in memory, independently of the previously extracted file.
 
@@ -112,7 +112,7 @@ plaintext = UTF-8 JSON
 
 The client extracts `uotaApps` and `domains`; missing arrays become empty lists. It posts decrypted JSON to EventBus and passes the parsed lists to `SystemService.onAppUpdate`.
 
-No response MAC or signature verification occurs between this decryption and the update callback in the reviewed path. CBC encryption with an embedded shared key does not establish independent server authenticity. The service URLs use HTTP, so this route also lacks TLS server authentication. Android's package installer still imposes its own APK validity, signing and update rules; this analysis does not claim an arbitrary unsigned APK will install.
+No response MAC or signature verification occurs between this decryption and the update callback in the reviewed path. CBC encryption with an embedded shared key does not establish independent server authenticity. The service URLs use HTTP, so this route also lacks TLS server authentication. Android's package installer still imposes its own APK validity, signing and update rules; this analysis does not claim an arbitrary unsigned APK will install. A package installed by this UID-1000 client does not automatically inherit system UID.
 
 ## 6. Update decision and download task
 
@@ -127,6 +127,8 @@ for (app : uotaApps) {
 ```
 
 The `AppInfoBean` fields are `infraFileId`, `packageName`, `platform`, `size`, `url`, `versionCode`, and `versionName`. The reviewed model has no expected digest field. The task builder receives URL, basename, external-cache `APP` directory, taskType and expected size. It does **not** carry the expected package name or version into the installer callback.
+
+The later [captured response](captured-domain-response.md) contains an extra `md5` field for each offered APK. The reviewed `AppInfoBean` model does not represent that field, and no enforcement was found in the traced download-to-install path. The list offers domain 1.0.6 and netservice 3.6.0, already installed at those versions; it is not evidence of a new download.
 
 That distinction matters: the installed-package check is based on server metadata, while the eventual installer receives the downloaded file. No explicit archive-package-name comparison against that metadata was found along this path. This is a client validation gap, not evidence that Android's installer security checks are bypassed.
 
