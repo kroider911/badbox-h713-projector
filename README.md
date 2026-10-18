@@ -840,191 +840,40 @@ Read-only reachability check from an independent host (no proxy protocol/payload
 
 ## 11. SPR2226 / Senz H713M variant
 
-**18 Oct 2026 · device-specific case · @R**
+**18 Oct 2026 · additional device case**
 
-A Senz-branded projector identified as `SPR2226` was examined over USB ADB. It is an Allwinner H713/H713M Android 11 variant with an unsafe development configuration and a system-UID update chain. The unit contains a concrete task for downloading `com.android.domain`. Targeted Java decompilation now traces its request protocol, encrypted responses, domain replacement, download checks and installer submission in the [code-level analysis](analysis/cases/SPR2226-2026/code-analysis.md).
+A Senz `SPR2226` projector shares the Allwinner H713/H713M platform with the AT-M269 case, but has a different captured package inventory. The examined unit runs Android 11, firmware `H713M-android11-v1.0`, with unauthenticated ADB, shell root access and permissive SELinux.
 
-This is a related but distinct sample. The AT-M269 case above contains the `.rf` proxy modules and `yiyou` loader. Those packages and modules were **not found** in the captured SPR2226 inventory. Proxy operation, common authorship, retailer/manufacturer attribution and infection of other units are not established by this case.
+### Concrete findings
 
-### 11.1. Device
-
-| Property | Value |
+| Finding | Evidence and boundary |
 | --- | --- |
-| Sold as | Senz projector, `SPR2226` |
-| USB | VID/PID `1F3A:1001` |
-| SoC / board | Allwinner H713/H713M; `h713m-tuna_p3`, platform `ares` |
-| Boot hardware | `sun50iw12p1` |
-| Firmware | `H713M-android11-v1.0` |
-| OS / kernel | Android 11 (SDK 30), Linux 5.4.99, `armv7l` |
-| Build | `userdebug`; 16 Apr 2026 11:38:29 CST |
-| Display | 1280 × 720 |
-| Verified Boot | `green`; VBMeta device state `locked` |
+| **Domain DEX detected as Agent.BOA** | Redacted ESET event transcription reports `Android/TrojanDownloader.Agent.BOA`; its object hash matches the DEX hash recorded in the analysis. Original event records remain private. |
+| **netservice → domain installation relationship** | `sofa-db` task 601 names domain 1.0.6; APK size/MD5 match, and package metadata records netservice as installer. Both clients run as UID 1000. |
+| **Live update metadata** | An analyst-reported 18 October capture contains an encrypted response offering the already installed domain 1.0.6 and netservice 3.6.0. Process attribution is strongly correlated, not directly PID-verified; no new installation was observed. |
+| **Downloader validation gaps** | Reviewed domain code downloads APKs and submits installer sessions, without enforcing the response's MD5 field or waiting for final installation status. Android's own signing/install rules still apply. |
+| **Shared native components** | `qw`, `systemmixservice` and both systemmix libraries have exact SHA-256 matches with the AT-M269 repository samples. This establishes shared files, not identical firmware or authorship. |
 
-```
-# Read the identity yourself
-adb devices -l
-adb shell getprop ro.product.model       # SPR2226
-adb shell getprop ro.board.platform      # ares
-adb shell getprop ro.boot.hardware       # sun50iw12p1
-adb shell getprop ro.build.fingerprint
-```
+The AT-M269 `.rf` proxy modules and `yiyou`/`sysapp`/`adtest` packages were not found in the captured SPR2226 inventory. **BADBOX attribution and residential-proxy operation are not established.** The ESET Keenadu detections concern separately cloned reference-repository files, not samples collected from this projector.
 
-### 11.2. Get in
+### Sample and indicators
 
-The examined unit exposes an unauthorised ADB/root posture over the USB connection. This is a device observation, not a claim about every SPR2226 unit.
-
-```
-adb shell getprop ro.adb.secure          # 0
-adb shell getprop service.adb.tcp.port   # 5555
-adb shell su 0 id                       # uid=0(root)
-adb shell getenforce                    # Permissive
-```
-
-`ro.debuggable=1`, `ro.adb.secure=0`, a running root-capable `su` and permissive SELinux materially reduce the device security boundary. Green/locked Verified Boot verifies the boot chain; it does not establish that every signed system component is trustworthy.
-
-### 11.3. Update/install chain
-
-`com.android.netservice` is present in the system image and maintains a private `sofa-db` task database. Its task record names an APK, a download endpoint, an expected size and an MD5 that all match the APK extracted from this unit.
-
-```
-Firmware (H713M Android 11)
-└─ com.android.netservice
-     ├─ system: /system/app/netserevice-release
-     ├─ version: netservice-3.4.9-allwinner
-     ├─ data:    3.6.0 (versionCode 60)
-     └─ sofa-db / task 601
-          └─ Domain-1.0.6-20260709-release_aw.apk
-               └─ com.android.domain 1.0.6
-                    └─ com.android.systemss.SystemService (UID 1000)
-```
-
-### 11.4. Proof of the observed downloader chain
-
-#### **a) System task names a concrete APK**
-
-```
-taskId:   601
-package:  com.android.domain
-component: com.android.domain/com.android.systemss.SystemService
-version:  1.0.6 / code 106
-auto-start: 1
-file:     Domain-1.0.6-20260709-release_aw.apk
-size:     3959797 bytes
-md5:      72ac40ce7df55d586f21c6d89cce6b7b
-url:      http://40.160.68.219:38513/ib01/20260711172ac40ce7df55d586f21c6d89cce6b7bDomain-1.0.6-20260709-release_aw.apk
-```
-
-The endpoint and filename are retained as indicators. The device token, CPU identifier and MAC values in the same database are intentionally not published.
-
-#### **b) Package manager records the same installer relationship**
-
-```
-package:  com.android.domain
-version:  1.0.6
-installer: com.android.netservice
-service:  com.android.systemss.SystemService
-first install: 2026-08-30 12:37:44
-```
-
-This establishes the observed installer relationship. It does not identify the person or organisation operating the server.
-
-#### **c) APK hash matches the task record**
-
-```
-size:    3959797 bytes
-MD5:     72AC40CE7DF55D586F21C6D89CCE6B7B
-SHA-256: 5B029ABE4AD2CD6DFA18064899B50190E00CE0F50BAC57CBD849502AB3108F30
-```
-
-#### **d) Independent file detection**
-
-The independent file-detection result is recorded once in the [case report](analysis/cases/SPR2226-2026/reverse-engineering.md#7-apk-evidence).
-
-#### **e) Privileged service surface**
-
-The package requests or uses high-impact capabilities including package installation/deletion, overlays, network access, camera, microphone, system settings and reboot/shutdown-related control. Its active service runs as Android UID 1000.
-
-#### **f) Boot-time Google receiver controls**
-
-The firmware contains root-triggered scripts `appsdisable` and `gmsopt` that query `BOOT_COMPLETED` receivers and can disable matching `com.google.android` components. Both share the `start_disable` guard. Reinspection found that flag set to 1 and disabled GMS components; their origin is unresolved. An empty disabled-package list does not exclude disabled components. See the [native-service analysis](analysis/cases/SPR2226-2026/native-system-services.md#7-boot-scripts-and-google-components).
-
-#### **g) Static DEX evidence: update, domain selection and installation**
-
-Instruction-level inspection of the retained `com.android.domain` APK (`classes.dex`, Android DEX 037) found an application-specific client rather than only generic Android libraries:
+Domain APK: 3,959,797 bytes; SHA-256:
 
 ```text
-com.android.nebulasdk.api.ServerInterface
-com.android.nebulasdk.api.biz.BaseBiz
-com.android.systemss.DomainPool
-com.android.systemss.presenter.AppnetPresenter
+5b029abe4ad2cd6dfa18064899b50190e00ce0f50bac57cbd849502ab3108f30
 ```
 
-The sample contains the default domain `d.rdnss.cloud`, two API paths, Retrofit/OkHttp construction and an HTTP base URL on port `9901`. `DomainPool` reads configured/test domains and queries the exported domain provider for domain candidates. The bytecode also contains a concrete download/install path using `PackageInstaller.SessionParams`, `createSession`, `openWrite`, `fsync` and `commit`, plus log strings for download progress and successful APK installation. This is direct static evidence of APK update capability; it is not proof that every possible task was executed during the capture.
-
-The Allwinner request path reads identifiers from `/sys/class/sunxi_info/sys_info` and the `eth0` hardware address. The separate `/proc/cpuinfo` routine belongs to the Rockchip branch. `StartupBroadcast` processes `BOOT_COMPLETED`; package add/remove actions are declared in the manifest but ignored by its examined method body. The [code-level analysis](analysis/cases/SPR2226-2026/code-analysis.md) follows the eight-hour request gate, AES-CBC response parsing, server-provided APK tasks, exported domain-provider writes, and premature install-success logging.
-
-The full redacted technical appendix is in [`analysis/cases/SPR2226-2026/reverse-engineering.md`](analysis/cases/SPR2226-2026/reverse-engineering.md); the reproducible evidence appendix is in [`analysis/cases/SPR2226-2026/evidence.md`](analysis/cases/SPR2226-2026/evidence.md).
-
-#### **h) Code-level chain and shared native binaries**
-
-The [complete component-chain analysis](analysis/cases/SPR2226-2026/chain-analysis.md) now joins the netservice heartbeat dispatcher, remote task persistence, download/MD5 gate, installer-status callback, and explicit autostart. Netservice reads `content://com.android.providerdomain.provider/domains` from domain's provider: `type=0` supplies business/heartbeat candidates, while domain uses `type=1`. Domain can replace those persisted rows from its server response, creating a configuration feedback path.
-
-The [netservice code report](analysis/cases/SPR2226-2026/netservice-code-analysis.md) documents HTTP ports 8742–8746, nine heartbeat commands, blacklist uninstall/force-stop behavior, diagnostic uploads and the firmware-conditional root installer. The [native report](analysis/cases/SPR2226-2026/native-system-services.md) maps 13 regular Binder operations plus special property-set, 12 JNI entries and the separate setuid `su` binary. Four qw/systemmix files match the original case byte-for-byte. A direct netservice-to-SystemMix invocation remains unproven. The published offline verifier passed 57 checks.
-
-### 11.5. Main components
-
-| Component | Location / identity | Observed role |
-| --- | --- | --- |
-| `com.android.netservice` | `/system/app/netserevice-release`, system component | Maintains config and download/install tasks |
-| `com.android.domain` | `/data/app`, version 1.0.6 | System-UID remote APK update client named by task 601 |
-| `InstallXAPK` | `/system/app/InstallXAPK/InstallXAPK.apk` | Privileged APK installation component |
-| `appsdisable` / `gmsopt` | `/system/bin` | Boot-time Google receiver control scripts |
-| `qw` | `/system/bin/qw` | Root Superuser-style daemon; local Unix socket; exact original-sample hash match |
-| `systemmixservice` | `/system/bin` plus native libraries | Root Binder file/property/mount/boot-asset interface; exact original-sample hash matches |
-| `su` | `/system/xbin/su` | Separate setuid UID/GID switching and command executable |
-
-### 11.6. Network indicators
-
-| Indicator | Observed use |
+| Indicator | Recorded role |
 | --- | --- |
-| `40.160.68.219:38513` | APK task download endpoint |
-| `business.dnsyc.top` | `netservice` configuration domain |
-| `heartbeat.dnsyc.top` | `netservice` heartbeat configuration |
-| `d.rdnss.cloud` | `domain` configuration reference |
+| `business.dnsyc.top`, `heartbeat.dnsyc.top` | netservice configuration |
+| `d.rdnss.cloud` / `47.251.54.180:9901` | domain configuration / captured API endpoint |
+| `40.160.68.219:38513` | domain APK task and offer |
+| `135.148.233.189:38513` | netservice APK offer |
 
-The netservice code constructs HTTP requests on ports 8742 (business/log upload), 8743 (heartbeat), 8744 (client-update check), 8745 (events) and 8746 (blacklist). These are static endpoint definitions, not a claim that every endpoint was contacted during capture.
+### Details
 
-A network snapshot showed ADB listening on `5555`, but no active connection owned by `com.android.domain` or `com.android.netservice` at capture time. Hosting-provider ownership is not attribution to an operator, vendor or retailer.
-
-### 11.7. Comparison with the AT-M269 case
-
-| Finding | AT-M269 case | SPR2226 case |
-| --- | --- | --- |
-| H713/H713M / `ares` | yes | yes |
-| Android 11 | yes | yes |
-| Unauthorised ADB / permissive SELinux | yes | yes |
-| `com.android.umanalytics.yiyou` | present | not found |
-| `com.android.sysapp` | present | not found |
-| `com.google.adtest` | present | not found |
-| `.rf` proxy modules | present | not found |
-| `com.android.netservice` | not established | present |
-| `com.android.domain` | not established | present; code-level update chain traced |
-| qw/systemmix binaries | repository samples | four exact SHA-256 matches |
-| Proxy traffic | observed in sample | not observed in snapshot |
-
-The defensible conclusion is a related H713 platform with a distinct, system-privileged downloader/service chain. This case does not establish that the SPR2226 unit ran the four proxy modules described above.
-
-### 11.8. Reproduction and publication notes
-
-```
-adb shell getprop > getprop.txt
-adb shell pm list packages -f -i > packages-with-installers.txt
-adb shell dumpsys package com.android.netservice > netservice-package.txt
-adb shell dumpsys package com.android.domain > domain-package.txt
-adb shell su 0 netstat -tnp > netstat.txt
-```
-
-Before publishing, redact serial numbers, MAC addresses, CPU identifiers, tokens and JWT-like values. Keep APK/DEX/JAR samples in a malware-analysis channel rather than in the public repository. The repository sample `plugin.jar` is separate evidence from the AT-M269 case; it was not found on this SPR2226 unit.
+Start with the [SPR2226 case overview](analysis/cases/SPR2226-2026/README.md). Supporting reports contain the [installation-chain evidence](analysis/cases/SPR2226-2026/evidence.md), [domain code analysis](analysis/cases/SPR2226-2026/code-analysis.md), [ESET provenance](analysis/cases/SPR2226-2026/eset-evidence.md), and [captured update response](analysis/cases/SPR2226-2026/captured-domain-response.md). APKs, raw captures and unique device identifiers are excluded from this contribution.
 
 ## 12. Other
 

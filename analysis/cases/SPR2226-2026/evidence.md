@@ -111,7 +111,7 @@ TASK_INFO_BEAN
   download host: 40.160.68.219:38513
 ```
 
-The task URL contained the same MD5 and filename shown above. Its full value appears in the root README; the path encodes a date, digest and filename rather than a demonstrated unique hardware identifier.
+The task URL contained the same MD5 and filename shown above. Its full value appears in [the captured response](captured-domain-response.md#3-recovered-application-offers); the path encodes a date, digest and filename rather than a demonstrated unique hardware identifier.
 
 This is the strongest chain on the examined unit:
 
@@ -135,6 +135,8 @@ SHA-256: 5B029ABE4AD2CD6DFA18064899B50190E00CE0F50BAC57CBD849502AB3108F30
 The independent file-detection result is recorded once in the [case report](reverse-engineering.md#7-apk-evidence). The retained APK supports the [code-level analysis](code-analysis.md); local detection records remain separate evidence.
 
 ## System files
+
+`InstallXAPK` was identified as package `com.ik.installxapk`, version 1.0.5 / code 5. Its declared installation/boot permissions describe requested access, not proof of every operation being available or used.
 
 The following files were present and inspected read-only:
 
@@ -243,4 +245,4 @@ For database collection, use a forensic copy and publish only selected rows afte
 - A package's permissions show capability, not proof that every capability was exercised.
 - The process snapshot did not show proxy traffic.
 - The absence of the known proxy packages/modules is meaningful for this snapshot but not a lifetime guarantee.
-- The firmware build is related to, but not byte-identical with, the public AT-M269 sample.
+- Whole-firmware byte identity with AT-M269 is not established; captured build/package inventories differ.
