@@ -19,6 +19,8 @@ com.android.netservice
 
 The [code-level analysis](code-analysis.md) follows the retained APK through startup, scheduling, DNS selection, request headers, response decryption, download validation and installer submission.
 
+The [joined chain analysis](chain-analysis.md) adds the [netservice method-level report](netservice-code-analysis.md) and [native system-service report](native-system-services.md), including the domain-provider feedback path, exact native sample matches, Binder dispatch table and offline verification results.
+
 The following are confirmed on this unit:
 
 - Allwinner H713/H713M Android 11 platform
@@ -321,15 +323,15 @@ Present system components:
 
 ### Boot scripts
 
-appsdisable and gmsopt are attached to root init services triggered by sys.boot_completed=1. Their logic queries Google boot receivers and can call pm disable on matching packages.
+appsdisable and gmsopt are attached to root init services triggered by sys.boot_completed=1. Their logic queries Google boot receiver components and can call pm disable on matching components, guarded by the shared start_disable flag.
 
-This is a confirmed firmware behavior. It does not prove that Google packages were disabled on every boot; no disabled Google packages were present in the captured inventory.
+Reinspection found start_disable=1 and disabled GMS components in dumpsys. Their origin is unresolved; an empty disabled-package list does not exclude component disables. The exact script behavior and limits are in the native report.
 
 ### Native/Binder surface
 
-systemmixservice and its JNI/native libraries are present as privileged system components. Their complete behavior was not reverse-engineered on this unit. The safe conclusion is presence of an additional privileged native/Binder surface, not a definitive claim about its purpose.
+The native report reconstructs systemmixservice's root Binder file/property/mount/boot-asset operations, 13 regular transactions plus a special property-set transaction, and the JNI registration table. It distinguishes observed runtime presence from untested cross-UID access.
 
-qw is present. Its exact equivalence to the public sample's binary was not established.
+qw, systemmixservice and both systemmix libraries were repulled from this unit and exactly match the original sample hashes. A separate setuid /system/xbin/su implements UID/GID switching and command execution. No direct SystemMix reference was found in either netservice DEX file; the normal install path uses Android PackageInstaller.
 
 ## 11. Process and network snapshot
 
@@ -393,6 +395,9 @@ The timeline documents local device state. It does not establish the first time 
 | APK identity | High | Matching size, MD5 and SHA-256 |
 | Boot-script behavior | High | Read-only script/init inspection |
 | domain update control flow | High for reviewed methods | Targeted Java decompilation and DEX instructions; runtime delivery unverified |
+| netservice task/install/launch chain | High for reviewed methods | Task field mapping, MD5 gate, result callback, component launch and shared provider URI |
+| Native sample equivalence | High | Four independent exact device/local/original-file SHA-256 matches |
+| SystemMix transaction map | High for inspected interface | Jump table, ARM/Thumb instructions and packed symbol relocations |
 | Active proxy operation | Not established | No matching modules or traffic snapshot |
 | Byte identity with AT-M269 sample | Low | Different build and inventory |
 | Manufacturer/retailer attribution | Not established | No attribution evidence |

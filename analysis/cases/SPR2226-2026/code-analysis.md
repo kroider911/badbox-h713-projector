@@ -173,9 +173,9 @@ Together with candidate selection, this creates a plausible local domain-list ta
 
 ## 10. Conclusions supported by this code
 
-The demonstrated function is a privileged remote APK update client with hardware identifiers in request headers, an eight-hour request gate, encrypted server-supplied application lists, persisted replacement domain lists, resumable downloads, and installer submission. The examined client has weak application-level authenticity/integrity checks and reports installation success prematurely.
+The demonstrated function is a privileged remote APK update client with hardware identifiers in request headers, an eight-hour request gate, encrypted server-supplied application lists, persisted replacement domain lists, resumable downloads, and installer submission. The examined client has weak application-level authenticity/integrity checks and reports installation success prematurely. Subsequent [netservice analysis](netservice-code-analysis.md#10-the-bidirectional-link-with-comandroiddomain) establishes that type-0 rows in this provider also supply netservice's server candidates; domain itself selects type 1.
 
-These are concrete code findings. They do not establish a residential-proxy implementation, arbitrary remote shell command dispatch, successful installation of every offered APK, or the identity of the controller. The native system services and the separate `com.android.netservice` APK still require their own method-level analysis before describing the entire firmware as fully reverse-engineered.
+These are concrete code findings. They do not establish a residential-proxy implementation, arbitrary remote shell command dispatch, successful installation of every offered APK, or the identity of the controller. The separate [netservice](netservice-code-analysis.md) and [native](native-system-services.md) reports now document those components' reviewed control flow; the [joined chain report](chain-analysis.md) lists the remaining execution/authorization questions.
 
 ## Reproduction
 

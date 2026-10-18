@@ -167,7 +167,13 @@ Recorded hashes:
   SHA-256 98e50bc5de107386d1b4c79d54b8051dcdce4603ea7b44ea574c2d7d5aedcc13
 ```
 
-The two boot scripts use root-triggered services after `sys.boot_completed=1`. They query Google boot receivers and can call `pm disable` on matching packages. The captured inventory showed no disabled Google packages at that moment.
+The two boot scripts use root-triggered services after `sys.boot_completed=1`. They query Google boot receiver components and can call `pm disable` on matching components. An empty disabled-package list does not establish that no components were disabled. Reinspection found `start_disable=1` and disabled GMS components; their historical cause is unresolved.
+
+## Additional code-level evidence
+
+The active netservice APK hash was independently reconfirmed on the device. Its two DEX hashes, the firmware-base APK hash, five native sample hashes, exact original-sample comparisons, Binder dispatch table and JNI table are documented in the [netservice](netservice-code-analysis.md) and [native](native-system-services.md) reports. The [joined chain](chain-analysis.md) records the shared domain-provider URI and the boundaries between implemented capability and observed execution.
+
+The offline [sample-verification.json](sample-verification.json) records 57 passing checks without unique device identifiers. No package, provider row, Binder property or boot asset was changed to obtain those checks.
 
 ## Configuration indicators
 
