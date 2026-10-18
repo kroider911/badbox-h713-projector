@@ -946,7 +946,7 @@ The package requests or uses high-impact capabilities including package installa
 
 #### **f) Boot-time Google receiver controls**
 
-The firmware contains root-triggered scripts `appsdisable` and `gmsopt` that query `BOOT_COMPLETED` receivers and can disable matching `com.google.android` packages. Both scripts are present in the read-only system image and are boot-triggered. No disabled Google packages were present in the captured inventory, so their presence is established but their effect on every boot is not.
+The firmware contains root-triggered scripts `appsdisable` and `gmsopt` that query `BOOT_COMPLETED` receivers and can disable matching `com.google.android` components. Both share the `start_disable` guard. Reinspection found that flag set to 1 and disabled GMS components; their origin is unresolved. An empty disabled-package list does not exclude disabled components. See the [native-service analysis](analysis/cases/SPR2226-2026/native-system-services.md#7-boot-scripts-and-google-components).
 
 #### **g) Static DEX evidence: update, domain selection and installation**
 
@@ -965,6 +965,12 @@ The Allwinner request path reads identifiers from `/sys/class/sunxi_info/sys_inf
 
 The full redacted technical appendix is in [`analysis/cases/SPR2226-2026/reverse-engineering.md`](analysis/cases/SPR2226-2026/reverse-engineering.md); the reproducible evidence appendix is in [`analysis/cases/SPR2226-2026/evidence.md`](analysis/cases/SPR2226-2026/evidence.md).
 
+#### **h) Code-level chain and shared native binaries**
+
+The [complete component-chain analysis](analysis/cases/SPR2226-2026/chain-analysis.md) now joins the netservice heartbeat dispatcher, remote task persistence, download/MD5 gate, installer-status callback, and explicit autostart. Netservice reads `content://com.android.providerdomain.provider/domains` from domain's provider: `type=0` supplies business/heartbeat candidates, while domain uses `type=1`. Domain can replace those persisted rows from its server response, creating a configuration feedback path.
+
+The [netservice code report](analysis/cases/SPR2226-2026/netservice-code-analysis.md) documents HTTP ports 8742–8746, nine heartbeat commands, blacklist uninstall/force-stop behavior, diagnostic uploads and the firmware-conditional root installer. The [native report](analysis/cases/SPR2226-2026/native-system-services.md) maps 13 regular Binder operations plus special property-set, 12 JNI entries and the separate setuid `su` binary. Four qw/systemmix files match the original case byte-for-byte. A direct netservice-to-SystemMix invocation remains unproven. The published offline verifier passed 57 checks.
+
 ### 11.5. Main components
 
 | Component | Location / identity | Observed role |
@@ -973,8 +979,9 @@ The full redacted technical appendix is in [`analysis/cases/SPR2226-2026/reverse
 | `com.android.domain` | `/data/app`, version 1.0.6 | System-UID remote APK update client named by task 601 |
 | `InstallXAPK` | `/system/app/InstallXAPK/InstallXAPK.apk` | Privileged APK installation component |
 | `appsdisable` / `gmsopt` | `/system/bin` | Boot-time Google receiver control scripts |
-| `qw` | `/system/bin/qw` | Root service; purpose not fully determined in this case |
-| `systemmixservice` | `/system/bin` plus native libraries | OEM root/system-control surface; purpose not fully determined |
+| `qw` | `/system/bin/qw` | Root Superuser-style daemon; local Unix socket; exact original-sample hash match |
+| `systemmixservice` | `/system/bin` plus native libraries | Root Binder file/property/mount/boot-asset interface; exact original-sample hash matches |
+| `su` | `/system/xbin/su` | Separate setuid UID/GID switching and command executable |
 
 ### 11.6. Network indicators
 
@@ -984,6 +991,8 @@ The full redacted technical appendix is in [`analysis/cases/SPR2226-2026/reverse
 | `business.dnsyc.top` | `netservice` configuration domain |
 | `heartbeat.dnsyc.top` | `netservice` heartbeat configuration |
 | `d.rdnss.cloud` | `domain` configuration reference |
+
+The netservice code constructs HTTP requests on ports 8742 (business/log upload), 8743 (heartbeat), 8744 (client-update check), 8745 (events) and 8746 (blacklist). These are static endpoint definitions, not a claim that every endpoint was contacted during capture.
 
 A network snapshot showed ADB listening on `5555`, but no active connection owned by `com.android.domain` or `com.android.netservice` at capture time. Hosting-provider ownership is not attribution to an operator, vendor or retailer.
 
@@ -1000,6 +1009,7 @@ A network snapshot showed ADB listening on `5555`, but no active connection owne
 | `.rf` proxy modules | present | not found |
 | `com.android.netservice` | not established | present |
 | `com.android.domain` | not established | present; code-level update chain traced |
+| qw/systemmix binaries | repository samples | four exact SHA-256 matches |
 | Proxy traffic | observed in sample | not observed in snapshot |
 
 The defensible conclusion is a related H713 platform with a distinct, system-privileged downloader/service chain. This case does not establish that the SPR2226 unit ran the four proxy modules described above.

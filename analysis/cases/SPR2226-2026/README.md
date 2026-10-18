@@ -1,5 +1,7 @@
 # SPR2226 / H713M variant
 
+Start with the [joined component-chain analysis](chain-analysis.md), then the code reports for [netservice](netservice-code-analysis.md), [domain](code-analysis.md) and [native system services](native-system-services.md). The [offline verifier](tools/verify_samples.py) and [57-check result](sample-verification.json) make the sample and dispatch relationships reproducible.
+
 > Device-specific case for the H713 projector family. This is a related but distinct firmware sample from the AT-M269 case in the main README.
 
 ## Executive conclusion
@@ -162,7 +164,7 @@ The following system files were inspected read-only:
 /system/app/InstallXAPK/InstallXAPK.apk
 ```
 
-`appsdisable` and `gmsopt` are boot-triggered root scripts that query Google boot receivers and can disable matching packages. This is a firmware finding, not proof that Google packages were disabled at every boot. No disabled Google packages were present in the captured inventory.
+`appsdisable` and `gmsopt` are boot-triggered root scripts that query Google boot receiver components and can disable matching components. Both share a start_disable guard. Reinspection found that flag set and disabled GMS components, but the origin of those component states is unresolved. The [native report](native-system-services.md) distinguishes component state from package state.
 
 ## Comparison with the AT-M269 case
 
@@ -177,6 +179,7 @@ The following system files were inspected read-only:
 | `.rf` proxy modules | present | not found |
 | `com.android.netservice` | not established | present |
 | `com.android.domain` | not established | present; code-level update chain traced |
+| qw/systemmix binaries | repository samples | four exact SHA-256 matches |
 | Proxy traffic | sample evidence | not observed in snapshot |
 
 The defensible conclusion is shared platform or firmware lineage with a distinct suspicious update/service chain—not proof of identical payloads or proxy operation.
