@@ -244,4 +244,3 @@ For database collection, use a forensic copy and publish only selected rows afte
 - The process snapshot did not show proxy traffic.
 - The absence of the known proxy packages/modules is meaningful for this snapshot but not a lifetime guarantee.
 - The firmware build is related to, but not byte-identical with, the public AT-M269 sample.
-
