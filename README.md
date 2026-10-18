@@ -842,38 +842,86 @@ Read-only reachability check from an independent host (no proxy protocol/payload
 
 **18 Oct 2026 · additional device case**
 
-A Senz `SPR2226` projector shares the Allwinner H713/H713M platform with the AT-M269 case, but has a different captured package inventory. The examined unit runs Android 11, firmware `H713M-android11-v1.0`, with unauthenticated ADB, shell root access and permissive SELinux.
+A Senz `SPR2226` has a system-UID APK downloader/update chain. ESET documentation reports Agent.BOA on its domain DEX. A later passive capture records update offers for both clients. The evidence below establishes a different result from the AT-M269 proxy case: **BADBOX attribution and residential-proxy operation are not established.**
 
-### Concrete findings
+### 11.1. Device and access
 
-| Finding | Evidence and boundary |
+| Property | SPR2226 observation |
 | --- | --- |
-| **Domain DEX detected as Agent.BOA** | Redacted ESET event transcription reports `Android/TrojanDownloader.Agent.BOA`; its object hash matches the DEX hash recorded in the analysis. Original event records remain private. |
-| **netservice → domain installation relationship** | `sofa-db` task 601 names domain 1.0.6; APK size/MD5 match, and package metadata records netservice as installer. Both clients run as UID 1000. |
-| **Live update metadata** | An analyst-reported 18 October capture contains an encrypted response offering the already installed domain 1.0.6 and netservice 3.6.0. Process attribution is strongly correlated, not directly PID-verified; no new installation was observed. |
-| **Downloader validation gaps** | Reviewed domain code downloads APKs and submits installer sessions, without enforcing the response's MD5 field or waiting for final installation status. Android's own signing/install rules still apply. |
-| **Shared native components** | `qw`, `systemmixservice` and both systemmix libraries have exact SHA-256 matches with the AT-M269 repository samples. This establishes shared files, not identical firmware or authorship. |
+| Platform | Allwinner H713/H713M, `h713m-tuna_p3` / `ares`; Android 11 / SDK 30 |
+| Firmware | `H713M-android11-v1.0`; `userdebug`; Linux 5.4.99 |
+| Security | Unauthenticated ADB; shell root; permissive SELinux |
 
-The AT-M269 `.rf` proxy modules and `yiyou`/`sysapp`/`adtest` packages were not found in the captured SPR2226 inventory. **BADBOX attribution and residential-proxy operation are not established.** The ESET Keenadu detections concern separately cloned reference-repository files, not samples collected from this projector.
-
-### Sample and indicators
-
-Domain APK: 3,959,797 bytes; SHA-256:
+Read-only checks on the USB-connected unit:
 
 ```text
-5b029abe4ad2cd6dfa18064899b50190e00ce0f50bac57cbd849502ab3108f30
+adb shell getprop ro.product.model       # SPR2226
+adb shell getprop ro.adb.secure          # 0
+adb shell getprop service.adb.tcp.port   # 5555
+adb shell su 0 id                       # uid=0(root)
+adb shell getenforce                    # Permissive
 ```
+
+### 11.2. Prove the update chain
+
+**1. netservice has a concrete task for domain.** The private `sofa-db` task and extracted APK agree on size/MD5; package metadata records netservice as installer. Both active clients run as UID 1000.
+
+```text
+system base: netservice-3.4.9-allwinner → active data update: netservice 3.6.0
+sofa-db task 601 → Domain-1.0.6-20260709-release_aw.apk
+package: com.android.domain 1.0.6 / 106; auto-start: 1
+component: com.android.domain/com.android.systemss.SystemService
+size: 3959797; MD5: 72ac40ce7df55d586f21c6d89cce6b7b
+installer: com.android.netservice; first install: 2026-08-30 12:37:44
+```
+
+[Package/task evidence](analysis/cases/SPR2226-2026/evidence.md#database-evidence).
+
+**2. ESET reports Agent.BOA on the matching domain DEX.** The supplied event transcription names `Android/TrojanDownloader.Agent.BOA`; its object SHA-256 matches the DEX hash recorded in the code analysis:
+
+```text
+APK SHA-256: 5b029abe4ad2cd6dfa18064899b50190e00ce0f50bac57cbd849502ab3108f30
+DEX SHA-256: 8f013074186630aa31d6146bd9431bb6a0568c25438103731c81106176715d1a
+```
+
+Original ESET screenshots/logs remain private; this review checked the redacted package, not a fresh antivirus scan. Deletion concerned the Windows analysis copy. Keenadu alerts concerned separately cloned reference-repository files. [Detection provenance](analysis/cases/SPR2226-2026/eset-evidence.md).
+
+**3. The domain client accepts APK lists and submits installs.** The reviewed path is `AppnetPresenter` → `SystemService.onAppUpdate` → download → `PackageInstaller.Session.commit`. Analyst pseudocode, not an original decompiler listing:
+
+```java
+for (app : uotaApps) {
+    if (!installedVersionAtLeast(app.packageName, app.versionCode)) {
+        addDownloadTask(app.url, 1, app.size);
+    }
+}
+```
+
+The traced client path does not enforce the server's MD5 field or compare the downloaded archive's package name with task metadata. Its success log follows submission, not confirmed installation. Android's own APK signing/install rules still apply; downloaded apps do not automatically inherit UID 1000. [Code and offsets](analysis/cases/SPR2226-2026/code-analysis.md#6-update-decision-and-download-task).
+
+**4. A captured response offers both installed clients.** At 05:57:23–24 UTC / 07:57 CEST on 18 October, an analyst-reported capture to `47.251.54.180:9901` yielded this catalogue after HTTP/gzip decoding and AES-CBC decryption. Selected fields transcribed from the report, not raw response bytes:
+
+| packageName | versionCode | size | md5 |
+| --- | ---: | ---: | --- |
+| `com.android.domain` | 106 | 3,959,797 | `72ac40ce7df55d586f21c6d89cce6b7b` |
+| `com.android.netservice` | 60 | 4,681,852 | `ce8e6ff74f689652f14b8f307d05f724` |
+
+`domains: []`. Both versions were already installed, so the code predicts skipping download; no new installation was observed. API-process attribution is strongly correlated, not directly PID/socket-verified. PCAP/decoder bytes were not supplied to this reviewer. [Capture hashes, parsing/decryption and limits](analysis/cases/SPR2226-2026/captured-domain-response.md).
+
+**5. Four native files match AT-M269 exactly.** SHA-256 comparisons link `qw`, `systemmixservice`, `libsystemmixservice.so` and `libsystemmix_jni.so` to the original samples. The native report maps their privilege surfaces; a direct netservice-to-SystemMix call is unproven. [Hashes and disassembly](analysis/cases/SPR2226-2026/native-system-services.md).
+
+### 11.3. Indicators and conclusion
 
 | Indicator | Recorded role |
 | --- | --- |
+| `com.android.netservice`, `com.android.domain` | Installed update clients |
 | `business.dnsyc.top`, `heartbeat.dnsyc.top` | netservice configuration |
 | `d.rdnss.cloud` / `47.251.54.180:9901` | domain configuration / captured API endpoint |
 | `40.160.68.219:38513` | domain APK task and offer |
 | `135.148.233.189:38513` | netservice APK offer |
 
-### Details
+The concrete finding is a privileged downloader chain with an ESET-reported detection and live update metadata. The AT-M269 `.rf` modules and `yiyou`/`sysapp`/`adtest` packages were not found in this inventory. The restricted API capture cannot exclude other traffic, identify an operator, or generalize to every SPR2226. No cleanup or firmware repair is claimed here.
 
-Start with the [SPR2226 case overview](analysis/cases/SPR2226-2026/README.md). Supporting reports contain the [installation-chain evidence](analysis/cases/SPR2226-2026/evidence.md), [domain code analysis](analysis/cases/SPR2226-2026/code-analysis.md), [ESET provenance](analysis/cases/SPR2226-2026/eset-evidence.md), and [captured update response](analysis/cases/SPR2226-2026/captured-domain-response.md). APKs, raw captures and unique device identifiers are excluded from this contribution.
+[Case overview and appendices](analysis/cases/SPR2226-2026/README.md). Raw samples, captures and unique device identifiers are excluded from this contribution.
 
 ## 12. Other
 
