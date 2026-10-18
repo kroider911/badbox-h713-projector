@@ -2,12 +2,12 @@
 
 ## Senz / SPR2226 Android projector – H713M firmware variant
 
-**Report type:** Redacted technical reverse-engineering report  
-**Device aliases:** Senz, SPR2226  
-**Platform:** Allwinner H713/H713M  
-**Firmware:** H713M-android11-v1.0  
-**Android:** 11 / SDK 30  
-**Collection date:** 18 October 2026  
+**Report type:** Redacted technical reverse-engineering report
+**Device aliases:** Senz, SPR2226
+**Platform:** Allwinner H713/H713M
+**Firmware:** H713M-android11-v1.0
+**Android:** 11 / SDK 30
+**Collection date:** 18 October 2026
 **Collection transport:** USB ADB
 
 > This report follows the structure and level of detail of the public badbox-h713-projector analysis, but applies only to the examined Senz/SPR2226 unit. It must not be read as proof that all Senz devices or all H713 projectors contain the same software.
